@@ -64,8 +64,21 @@ jobs:
 
           echo "VT response: $RESPONSE"
 
+          # Check for API errors
+          if echo "$RESPONSE" | jq -e '.error' > /dev/null; then
+            ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code')
+            ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message')
+            echo "::error::VirusTotal API Error ($ERROR_CODE): $ERROR_MSG"
+            exit 1
+          fi
+
           # Extract the analysis ID from the upload response
-          ANALYSIS_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+          ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.data.id // empty')
+          if [ -z "$ANALYSIS_ID" ]; then
+            echo "::error::Failed to extract analysis ID from VT response."
+            exit 1
+          fi
+
           echo "Analysis ID: $ANALYSIS_ID"
           echo "analysis_id=$ANALYSIS_ID" >> "$GITHUB_OUTPUT"
 
@@ -79,13 +92,24 @@ jobs:
 
           echo "VT report: $REPORT"
 
+          # Check for API errors in report
+          if echo "$REPORT" | jq -e '.error' > /dev/null; then
+             ERROR_MSG=$(echo "$REPORT" | jq -r '.error.message')
+             echo "::error::VirusTotal API Error: $ERROR_MSG"
+             exit 1
+          fi
+
           # The human-readable web URL uses the file SHA256 reported by VT
-          FILE_SHA256=$(echo "$REPORT" | python3 -c "import sys,json; print(json.load(sys.stdin)['meta']['file_info']['sha256'])" 2>/dev/null || echo "")
+          FILE_SHA256=$(echo "$REPORT" | jq -r '.meta.file_info.sha256 // empty')
 
           if [ -n "$FILE_SHA256" ]; then
             PERMALINK="https://www.virustotal.com/gui/file/$FILE_SHA256"
           else
-            PERMALINK="https://www.virustotal.com/gui/analyses/$ANALYSIS_ID"
+            # Fallback to analysis permalink if file SHA256 is not yet available
+            PERMALINK=$(echo "$REPORT" | jq -r '.data.links.self // empty' | sed 's/api\/v3\/analyses/gui\/analyses/')
+            if [ -z "$PERMALINK" ]; then
+               PERMALINK="https://www.virustotal.com/gui/analyses/$ANALYSIS_ID"
+            fi
           fi
 
           echo "VirusTotal permalink: $PERMALINK"
