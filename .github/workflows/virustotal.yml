@@ -1,0 +1,128 @@
+name: VirusTotal Scan
+
+on:
+  # Run automatically whenever a new release tag is pushed (same trigger as release.yml)
+  push:
+    tags:
+      - 'v*'
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: write  # needed to update the gist / create commit with badge URL
+
+jobs:
+  virustotal-scan:
+    name: Build & Scan with VirusTotal
+    runs-on: ubuntu-latest
+
+    outputs:
+      scan_url: ${{ steps.vt_scan.outputs.permalink }}
+      scan_id:  ${{ steps.vt_scan.outputs.analysis_id }}
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Java + Gradle ───────────────────────────────────────────────────
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # ── 3. Build the distributable JAR ────────────────────────────────────
+      - name: Build plugin JAR
+        run: ./gradlew dist
+
+      # ── 4. Locate the built JAR ───────────────────────────────────────────
+      - name: Find JAR path
+        id: find_jar
+        run: |
+          JAR_PATH=$(find build/dist -name "*.jar" | head -n 1)
+          echo "jar_path=$JAR_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found JAR: $JAR_PATH"
+
+      # ── 5. Upload to VirusTotal and capture the permalink ─────────────────
+      - name: Upload to VirusTotal
+        id: vt_scan
+        env:
+          VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          JAR="${{ steps.find_jar.outputs.jar_path }}"
+
+          echo "Uploading $JAR to VirusTotal..."
+          RESPONSE=$(curl --silent --request POST \
+            --url 'https://www.virustotal.com/api/v3/files' \
+            --header "x-apikey: $VT_API_KEY" \
+            --form "file=@$JAR")
+
+          echo "VT response: $RESPONSE"
+
+          # Extract the analysis ID from the upload response
+          ANALYSIS_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+          echo "Analysis ID: $ANALYSIS_ID"
+          echo "analysis_id=$ANALYSIS_ID" >> "$GITHUB_OUTPUT"
+
+          # Wait briefly, then retrieve the analysis report to get the permalink
+          echo "Waiting 15 seconds for analysis to start..."
+          sleep 15
+
+          REPORT=$(curl --silent --request GET \
+            --url "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
+            --header "x-apikey: $VT_API_KEY")
+
+          echo "VT report: $REPORT"
+
+          # The human-readable web URL uses the file SHA256 reported by VT
+          FILE_SHA256=$(echo "$REPORT" | python3 -c "import sys,json; print(json.load(sys.stdin)['meta']['file_info']['sha256'])" 2>/dev/null || echo "")
+
+          if [ -n "$FILE_SHA256" ]; then
+            PERMALINK="https://www.virustotal.com/gui/file/$FILE_SHA256"
+          else
+            PERMALINK="https://www.virustotal.com/gui/analyses/$ANALYSIS_ID"
+          fi
+
+          echo "VirusTotal permalink: $PERMALINK"
+          echo "permalink=$PERMALINK" >> "$GITHUB_OUTPUT"
+
+      # ── 6. Write scan URL to job summary (visible in Actions UI) ──────────
+      - name: Write summary
+        run: |
+          echo "## ✅ VirusTotal Scan Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **JAR scanned** | \`${{ steps.find_jar.outputs.jar_path }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Analysis ID** | \`${{ steps.vt_scan.outputs.analysis_id }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Full report** | [${{ steps.vt_scan.outputs.permalink }}](${{ steps.vt_scan.outputs.permalink }}) |" >> "$GITHUB_STEP_SUMMARY"
+
+      # ── 7. Update READMEs with the latest scan URL ─────────────────────────
+      - name: Update README links
+        run: |
+          URL="${{ steps.vt_scan.outputs.permalink }}"
+          # Escape URL for sed
+          ESC_URL=$(echo "$URL" | sed 's/\//\\\//g')
+          
+          echo "Updating READMEs with URL: $URL"
+          for f in README.md README_RO.md README_RU.md; do
+            if [ -f "$f" ]; then
+              # Find the VirusTotal badge and replace its link destination
+              # Pattern: [![VirusTotal Scan](...logo=virustotal...)](ANY_URL)
+              sed -i "s/\(\[!\[VirusTotal Scan\]([^)]*logo=virustotal[^)]*)\]\)([^)]*)/\1($ESC_URL)/g" "$f"
+              echo "Updated $f"
+            fi
+          done
+
+      - name: Commit changes back to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "ci: update VirusTotal scan report link [skip ci]"
+          file_pattern: "README*.md"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"

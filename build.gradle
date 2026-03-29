@@ -3,61 +3,44 @@ plugins {
     id "checkstyle"
 }
 
+group = "org.openstreetmap.josm.plugins"
+version = "2.0.0"
+
 checkstyle {
     toolVersion = "10.16.0"
     maxWarnings = 0
-    sourceSets = []  // Disable checkstyle from build task
 }
 
 dependencies {
+    implementation("org.openstreetmap.josm:josm:${project.findProperty('plugin.compile.version') ?: 'snapshot'}")
+    testImplementation("org.openstreetmap.josm:josm-unittest") { changing = true }
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
-    testImplementation("org.junit.vintage:junit-vintage-engine:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-params:5.8.2")
+    testImplementation("junit:junit:4.13.2") {
+        because("JOSMTestRules from josm-unittest depends on org.junit.rules.TestRule")
+    }
     testImplementation("org.jmockit:jmockit:1.49")
-    testImplementation("org.openstreetmap.josm:josm-unittest:"){changing=true}
     testImplementation('com.github.tomakehurst:wiremock-jre8:2.35.2')
     testImplementation("org.awaitility:awaitility:4.2.0")
     checkstyle "com.puppycrawl.tools:checkstyle:${checkstyle.toolVersion}"
 }
 
-sourceSets {
-    test {
-        java {
-            srcDirs = ["test/unit", "test/integration", "test/utils"]
-        }
-        resources {
-            srcDirs = ["test/data"]
-        }
+repositories {
+    mavenCentral()
+    maven {
+        url "https://josm.openstreetmap.de/nexus/content/repositories/releases/"
     }
 }
 
-repositories {
-    mavenCentral()
+afterEvaluate {
+    if (tasks.findByName('compileJava_minJosm')) {
+        tasks.named('compileJava_minJosm') {
+            destinationDirectory = layout.buildDirectory.dir("classes/java/minJosm")
+        }
+    }
 }
 
 test {
-    project.afterEvaluate {
-        jvmArgs("-javaagent:${classpath.find { it.name.contains("jmockit") }.absolutePath}")
-    }
     useJUnitPlatform()
-    testLogging {
-        exceptionFormat "full"
-        events "skipped", "failed"
-        info {
-            showStandardStreams true
-        }
-    }
-}
-
-tasks.register('installPreCommit', Copy) {
-    description = "Copy pre-commit.sh to .git/hooks dir."
-    outputs.upToDateWhen { false }
-    from("$rootDir/scripts/pre-commit")
-    into("$rootDir/.git/hooks/")
-}
-
-tasks.build {
-    dependsOn("installPreCommit")
 }

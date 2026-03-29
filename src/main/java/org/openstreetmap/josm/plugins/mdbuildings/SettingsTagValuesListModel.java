@@ -1,0 +1,6 @@
+package org.openstreetmap.josm.plugins.mdbuildings;
+
+import javax.swing.DefaultListModel;
+
+public class SettingsTagValuesListModel extends DefaultListModel<Object> {
+}
