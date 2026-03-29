@@ -88,8 +88,9 @@ public class CadastruAddressFetcher {
                 continue;
             }
 
-            // Skip if building already has address data
-            if (building.hasKey("addr:housenumber") || building.hasKey("addr:full")) {
+            // Skip if building already has redundant address data (e.g. both number and street)
+            if ((building.hasKey("addr:housenumber") && building.hasKey("addr:street")) 
+                    || building.hasKey("addr:full")) {
                 continue;
             }
 
@@ -189,6 +190,7 @@ public class CadastruAddressFetcher {
         result = result.replaceAll("(?Ui)\\bpas\\.", "Pasajul");
         result = result.replaceAll("(?Ui)\\bfun\\.", "Fundătura");
         result = result.replaceAll("(?Ui)\\bmun\\.", "Municipiul");
+        result = result.replace('Ş', 'Ș').replace('ş', 'ș').replace('Ţ', 'Ț').replace('ţ', 'ț');
         result = result.replaceAll("(?Ui)\\bor\\.", "Orașul");
         result = result.replaceAll("(?Ui)\\bsat\\.", "Satul");
         result = result.replaceAll("(?Ui)\\bcom\\.", "Comuna");
