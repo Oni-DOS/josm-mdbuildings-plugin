@@ -1,6 +1,6 @@
 # MD-Buildings JOSM Plugin V2 🇲🇩
 
-[English](README.md) | [Română/Moldovenească](README_RO.md) | [Русский](README_RU.md)
+[🇬🇧](README.md) | [🇲🇩](README_RO.md) | [🇷🇺](README_RU.md)
 
 
 [![JOSM Plugin](https://img.shields.io/badge/JOSM-Plugin-blue.svg)](https://josm.openstreetmap.de/wiki/Plugins)
