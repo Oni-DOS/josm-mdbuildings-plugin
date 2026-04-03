@@ -6,7 +6,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-red.svg)](LICENSE)
 [![Author: Oni_DOS](https://img.shields.io/badge/Author-Oni__DOS-green.svg)](#)
 [![Original Author: Paweł Raszuk](https://img.shields.io/badge/Original_Author-Paweł_Raszuk-green.svg)](#)
-[![VirusTotal Scan](https://img.shields.io/badge/VirusTotal-Checked%20%E2%9C%94-brightgreen?logo=virustotal&logoColor=white)](https://github.com/Oni-DOS/josm-mdbuildings-plugin/blob/main/.github/virustotal/latest_scan_url.txt)
+[![VirusTotal Scan](https://img.shields.io/badge/VirusTotal-Checked%20%E2%9C%94-brightgreen?logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/162c31d45592b729eb51afea2ed1b7930ed343334b97f74d0025b8e4123ff77c)
 
 Высокопроизводительный плагин **JOSM**, предназначенный для точного импорта и синхронизации данных о зданиях из молдавских государственных наборов данных. **Версия 2** представляет собой реструктурированную, облегченную реализацию, ориентированную на стабильность ядра и основные функции.
 
