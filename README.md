@@ -59,23 +59,33 @@ The generated JAR will be located at `build/libs/mdbuildings-v2-2.0.0-SNAPSHOT.j
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Quick Start & Step-by-Step Workflow
 
 1. Open JOSM and load the area you want to map.
 2. **Download OSM data** for that area (`Ctrl+Shift+Down`).
 3. Open the **MD-Buildings sidebar** by clicking the Red Aurochs icon in the left panel.
 4. Select your desired **profile** (e.g. `GEODATA (Roofs)` or `CADASTRU (Buildings)`).
 
-#### Import New Building
-1.  Navigate to your target area on the map.
-2.  Press **Ctrl + Shift + 1** to download and import buildings from the active data source.
-3.  New buildings will be added to the active layer with default tags.
+### 🛠 The Ideal Mapping Workflow
 
-#### Replace/Update Existing Building
-1.  Select an existing building way (optional, but recommended).
-2.  **Trigger Type A (Selection)**: With a building way selected, press **Ctrl + Shift + 1**.
-3.  **Trigger Type B (Spatial Click)**: Hold **Ctrl** and **Double Click** inside the perimeter of an existing building way.
-4.  The plugin will match the existing building, update its geometry, and sync tags according to your selected profile.
+To get the most out of the plugin's dual-source system, follow this optimal step-by-step process for a typical mapping session:
+
+#### Step 1: Geometry & Height (GEODATA)
+1. In the sidebar, select the **`GEODATA (Roofs)`** profile. Set your mode to **Full Import**.
+2. Find an unmapped building on the satellite imagery.
+3. Point your mouse inside the building footprint and hold **Ctrl + Double Click** (2 Left Mouse Button clicks).
+4. The plugin will fetch the highly accurate roof outline and automatically calculate the real-world building height via the DTM API.
+
+#### Step 2: Address Data (CADASTRU)
+1. Now, switch the sidebar profile to **`CADASTRU (Buildings)`**. 
+2. Change the import mode to **Tags Update** (this will preserve the beautiful geometry you just imported in Step 1).
+3. Point your mouse inside the new building footprint and hold **Ctrl + Double Click**.
+4. The plugin will query the cadastral registry, sanitize the city and street names, correct any Romanian diacritics, and inject pristine `addr:*` tags directly onto your building.
+
+#### Step 3: Conflict Resolution & Validation
+1. If you are updating an actively mapped area with existing outdated tags, a Tag Conflict Dialog may appear. Select which source data is most accurate to merge.
+2. Look out for the 'Uncommon Tags' warning dialog which catches and highlights faulty legacy OpenStreetMap data. 
+3. Run JOSM Validator, verify your geometry, and click **Upload**!
 
 ---
 
@@ -85,7 +95,8 @@ The generated JAR will be located at `build/libs/mdbuildings-v2-2.0.0-SNAPSHOT.j
 |---|---|
 | **Direct WFS Import** | Fetches building footprints live from Moldovan public Geoservers (GEODATA, CADASTRU). |
 | **Intelligent Merging** | Automatically translates CADASTRU house numbers and merges interior address nodes. |
-| **Height Calculation** | Uses DTM API to calculate building height based on roof elevation and ground level. |
+| **Address Sanitization** | Normalizes Romanian diacritics (Ş/Ţ to Ș/Ț) and strips settlement prefixes (mun., or.) for pristine tag values. |
+| **Advanced Height Calculation** | Layered DTM fetching with fallback to calculate building heights, toggleable in settings. Automatically cleans raw `z=*` tags if DTM is bypassed. |
 | **Overlap Detection** | Prevents duplicate imports and manages spatial conflicts with existing OSM data. |
 | **3 Import Modes** | Full import, geometry-only update, or tags-only update. |
 | **Tag Conflict Resolution** | Resolves tag conflicts between the downloaded data and existing OSM objects. |
@@ -98,13 +109,9 @@ The generated JAR will be located at `build/libs/mdbuildings-v2-2.0.0-SNAPSHOT.j
 
 ### 1. Triggering a Building Import
 
-**Trigger Type A (Selection)**:
-- Select an existing building way in JOSM.
-- Press **Ctrl + Shift + 1**. The plugin will attempt to update the selected building.
-
-**Trigger Type B (Spatial Click)**:
 - Hold **Ctrl** and **double-click** the left mouse button anywhere on the map view.
-- The plugin will query the Geoserver for the nearest building at your cursor position. If an existing OSM building is under the cursor, it will attempt to update it.
+- The plugin will query the Geoserver for the nearest building at your cursor position. 
+- If an existing OSM building is under the cursor, it will attempt to update it according to the active Import Mode (Full, Geometry, or Tags).
 
 ---
 
@@ -155,12 +162,13 @@ You can add, edit, or remove servers and profiles in **Preferences → MD-BUILDI
 
 ---
 
-### 5. CADASTRU Profile & NRCASA Tag
+### 5. CADASTRU Profile & Address Processing
 
 When using the **CADASTRU (Buildings)** profile:
 
-- The plugin filters all tags from the WFS response, keeping **only `NRCASA`** (the Moldovan cadastral house number field).
-- The `NRCASA` tag is **automatically renamed** to `addr:housenumber` to comply with the OpenStreetMap tagging standard.
+- The plugin filters the response natively, mapping cadastral fields to OSM tags (e.g., `NRCASA` to `addr:housenumber`, `STREET` to `addr:street`, `CITY` to `addr:city`).
+- **Address Sanitization**: Settlement type prefixes (e.g., *mun., or., c., s.*) are automatically stripped from city names. Specific location types are preserved properly.
+- **Diacritics Normalization**: Legacy or incorrect Romanian diacritics (like *Ş/ş, Ţ/ţ*) are automatically converted to proper comma-below characters (*Ș/ș, Ț/ț*).
 - The `building=yes` and `source=AGCC/Linemap2017` tags are always added automatically.
 
 ---
@@ -188,16 +196,23 @@ When a building already exists in OSM and the plugin imports newer data from the
 
 ---
 
-### 8. Automated Height Calculation
+### 8. Advanced Automated Height Calculation
 
-When a building footprint from the **GEODATA** source includes a `z` attribute (absolute elevation of the roof), the plugin automatically:
+When a building footprint from the **GEODATA** source includes a `z` attribute (absolute elevation of the roof), the plugin can automatically calculate the building's relative height:
 
-1. Queries a **DTM (Digital Terrain Model) API** to get the ground elevation at the building's center point.
+1. **Layered DTM Fetching**: Queries DTM (Digital Terrain Model) APIs from multiple Geoserver URLs (with built-in retry and fallback logic) to get the ground elevation at the building's center point.
 2. Calculates the **relative height** as: `height = z_roof - z_ground`.
 3. Rounds the result to the nearest 0.1 meter.
 4. Applies the `height=<value>` tag to the building.
 
-This gives you accurate, real-world building heights without any manual calculation.
+> [!TIP]
+> This feature can be toggled on/off in **Preferences**. If DTM calculation is disabled or unavailable, the raw `z=*` tags obtained from the Geoserver are automatically removed to prevent polluting OSM data with absolute elevation values instead of relative building height.
+
+---
+
+### 9. Dynamic BBOX Search Radius
+
+The plugin uses an adjustable `BBOX_OFFSET` to gracefully query WFS areas, allowing users to accurately retrieve relevant data (like CADASTRU addresses) around an actively selected building or cursor position. This prevents missed elements during data queries over wider building topologies.
 
 ---
 
