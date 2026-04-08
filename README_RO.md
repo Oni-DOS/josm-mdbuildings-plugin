@@ -6,7 +6,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-red.svg)](LICENSE)
 [![Author: Oni_DOS](https://img.shields.io/badge/Author-Oni__DOS-green.svg)](#)
 [![Original Author: Paweł Raszuk](https://img.shields.io/badge/Original_Author-Paweł_Raszuk-green.svg)](#)
-[![VirusTotal Scan](https://img.shields.io/badge/VirusTotal-Checked%20%E2%9C%94-brightgreen?logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/162c31d45592b729eb51afea2ed1b7930ed343334b97f74d0025b8e4123ff77c)
+[![VirusTotal Scan](https://img.shields.io/badge/VirusTotal-Checked%20%E2%9C%94-brightgreen?logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/fb7f6f74a9c181214e212c7db45363291769d21e32052242e611f92556988d86)
 
 Un plugin **JOSM** de înaltă performanță proiectat pentru importul și sincronizarea precisă a datelor despre clădiri din seturile de date publice moldovenești. **Versiunea 2** este o implementare restructurată, simplificată, axată pe stabilitatea nucleului și pe caracteristicile esențiale.
 
